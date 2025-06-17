@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { GeoAbbreviationDB, GeoAbbreviation } from "@/lib/database";
+import { GeoAbbreviationDB, GeoAbbreviation, supabase } from "@/lib/database";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -42,9 +42,13 @@ export async function GET(request: NextRequest) {
       const results = await GeoAbbreviationDB.getMostCopied(10);
       return NextResponse.json({ success: true, data: results });
     } else {
-      // 默认获取所有数据的前10条
-      const results = await GeoAbbreviationDB.getAll();
-      return NextResponse.json({ success: true, data: results.slice(0, 10) });
+      // Handle pagination for admin panel
+      const page = parseInt(searchParams.get('page') || '1', 10);
+      const pageSize = parseInt(searchParams.get('pageSize') || '10', 10);
+      const adminSearchQuery = searchParams.get('adminSearch') || undefined;
+
+      const { data, total } = await GeoAbbreviationDB.getPaginated(page, pageSize, adminSearchQuery);
+      return NextResponse.json({ success: true, data, total });
     }
   } catch (error) {
     console.error("Database error:", error);

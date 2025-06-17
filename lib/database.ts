@@ -9,7 +9,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   );
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export interface GeoAbbreviation {
   _id: string;
@@ -200,5 +200,45 @@ export class GeoAbbreviationDB {
     if (error) {
       console.error("Error incrementing copied count:", error);
     }
+  }
+
+  // 获取分页记录和总数
+  static async getPaginated(
+    page: number,
+    pageSize: number,
+    searchQuery?: string
+  ): Promise<{ data: GeoAbbreviation[]; total: number }> {
+    let query = supabase
+      .from(this.TABLE_NAME)
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false });
+
+    if (searchQuery) {
+      query = query.or(
+        `abbreviation.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`
+      );
+    }
+
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize - 1;
+
+    const { data, error, count } = await query.range(startIndex, endIndex);
+
+    if (error) {
+      console.error("Error getting paginated records:", error);
+      return { data: [], total: 0 };
+    }
+
+    return {
+      data: data.map((item) => ({
+        _id: item.id,
+        abbreviation: item.abbreviation,
+        full_name: item.full_name,
+        copied_count: item.copied_count,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+      })),
+      total: count || 0,
+    };
   }
 }
