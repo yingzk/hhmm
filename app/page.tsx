@@ -102,7 +102,7 @@ export default function HomePage() {
           (result: GeoAbbreviation) =>
             result.abbreviation.toLowerCase() === query.toLowerCase()
         );
-        if (!foundExactMatch && query.trim() !== '') {
+        if (!foundExactMatch && query.trim() !== "") {
           setNotFoundKeywords([query]);
         } else {
           setNotFoundKeywords(data.notFoundKeywords || []);
@@ -238,7 +238,10 @@ export default function HomePage() {
                   style={{
                     fontSize: 18,
                     fontWeight: 700,
-                    color: abbr.toLowerCase() === searchQuery.toLowerCase() ? "red" : "#222",
+                    color:
+                      abbr.toLowerCase() === searchQuery.toLowerCase()
+                        ? "red"
+                        : "#222",
                     minWidth: 60,
                     cursor: "pointer",
                   }}
@@ -253,7 +256,11 @@ export default function HomePage() {
                       onCopy={() => {
                         handleCopy(nameData.full_name, nameData._id);
                       }}
-                      style={{ marginBottom: 0, fontSize: 14, marginRight: '8px' }}
+                      style={{
+                        marginBottom: 0,
+                        fontSize: 14,
+                        marginRight: "8px",
+                      }}
                     >
                       {nameData.full_name}
                     </Typography.Paragraph>
@@ -301,7 +308,10 @@ export default function HomePage() {
                   style={{
                     fontSize: 18,
                     fontWeight: 700,
-                    color: keyword.toLowerCase() === searchQuery.toLowerCase() ? "red" : "#222",
+                    color:
+                      keyword.toLowerCase() === searchQuery.toLowerCase()
+                        ? "red"
+                        : "#222",
                     minWidth: 60,
                     cursor: "pointer",
                   }}
@@ -343,6 +353,7 @@ export default function HomePage() {
             }}
           />
           <Input
+            autoFocus
             style={{ fontSize: 14 }}
             placeholder="全称，如：公示地价"
             value={newFullName}

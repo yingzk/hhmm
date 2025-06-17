@@ -24,11 +24,17 @@ export class GeoAbbreviationDB {
   private static readonly TABLE_NAME = "geo_abbreviations";
 
   // 根据简写搜索
-  static async search(query: string): Promise<GeoAbbreviation[]> {
+  static async search(queries: string[]): Promise<GeoAbbreviation[]> {
+    if (queries.length === 0) {
+      return [];
+    }
+
+    const orConditions = queries.map(query => `abbreviation.ilike.%${query}%,full_name.ilike.%${query}%`).join(',');
+
     const { data, error } = await supabase
       .from(this.TABLE_NAME)
       .select("*")
-      .or(`abbreviation.ilike.%${query}%,full_name.ilike.%${query}%`)
+      .or(orConditions)
       .order("created_at", { ascending: false });
 
     if (error) {

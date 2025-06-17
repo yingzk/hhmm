@@ -16,18 +16,23 @@ export async function GET(request: NextRequest) {
       let foundResults: GeoAbbreviation[] = [];
       const notFoundKeywords: string[] = [];
 
+      const allSearchResults = await GeoAbbreviationDB.search(keywords);
+
+      // Determine notFoundKeywords based on the original search input
       for (const kw of keywords) {
-        const part = await GeoAbbreviationDB.search(kw);
-        if (part.length > 0) {
-          foundResults.push(...part); // Push all found parts
-        } else {
+        const foundInResults = allSearchResults.some(
+          (result) =>
+            result.abbreviation.toLowerCase().includes(kw.toLowerCase()) ||
+            result.full_name.toLowerCase().includes(kw.toLowerCase())
+        );
+        if (!foundInResults) {
           notFoundKeywords.push(kw);
         }
       }
 
       // Deduplicate the foundResults by _id to avoid sending duplicate GeoAbbreviation objects
       const uniqueById = new Map<string, GeoAbbreviation>();
-      foundResults.forEach(item => {
+      allSearchResults.forEach(item => {
         uniqueById.set(item._id, item);
       });
       foundResults = Array.from(uniqueById.values());
