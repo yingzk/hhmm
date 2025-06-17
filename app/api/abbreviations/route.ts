@@ -81,17 +81,6 @@ export async function PUT(request: NextRequest) {
   try {
     const { id, abbreviation, fullName } = await request.json();
 
-    // Check if this is an increment-copy request
-    const url = new URL(request.url);
-    if (url.pathname.includes("increment-copy")) {
-      const id = url.searchParams.get("id");
-      if (!id) {
-        return NextResponse.json({ success: false, error: "Missing ID for increment-copy" }, { status: 400 });
-      }
-      await GeoAbbreviationDB.incrementCopiedCount(id);
-      return NextResponse.json({ success: true });
-    }
-
     // Original update logic
     if (!id || !abbreviation || !fullName) {
       return NextResponse.json(

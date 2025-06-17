@@ -26,6 +26,12 @@ export default function HomePage() {
   const [hotList, setHotList] = useState<GeoAbbreviation[]>([]);
   const [notFoundKeywords, setNotFoundKeywords] = useState<string[]>([]);
 
+  // 定义一个接口来存储全称和ID
+  interface FullNameData {
+    full_name: string;
+    _id: string;
+  }
+
   // 获取热门词数据
   const fetchHotList = async () => {
     try {
@@ -49,21 +55,23 @@ export default function HomePage() {
       if (!acc.has(cur.abbreviation)) {
         acc.set(cur.abbreviation, []);
       }
-      acc.get(cur.abbreviation).push(cur.full_name);
+      acc
+        .get(cur.abbreviation)!
+        .push({ full_name: cur.full_name, _id: cur._id });
       return acc;
-    }, new Map())
+    }, new Map<string, FullNameData[]>()) // 更新Map的类型
   );
 
   // 复制内容并提示
   const handleCopy = (text: string, id: string) => {
     clipboardCopy(text)
-      .then(async () => {
+      .then(() => {
         message.success({ content: `已复制: ${text}` });
-        // 增加复制次数
-        await fetch(`/api/abbreviations/increment-copy?id=${id}`, {
+        // 增加复制次数 (现在是非阻塞的)
+        fetch(`/api/abbreviations/increment-copy?id=${id}`, {
           method: "PUT",
         });
-        // 重新获取热门词，更新显示
+        // 重新获取热门词，更新显示 (也可以考虑非阻塞)
         fetchHotList();
       })
       .catch(() => {
@@ -160,12 +168,11 @@ export default function HomePage() {
     <div style={{ minHeight: "100vh", padding: 0 }}>
       <div style={{ maxWidth: 700, margin: "0 auto", padding: "32px 8px" }}>
         <Typography.Title
-          level={1}
+          level={2}
           style={{
             textAlign: "center",
             marginBottom: 32,
             color: "#312e81",
-            textShadow: "0 2px 8px #fff8, 0 1px 0 #fff",
           }}
         >
           😅能不能好好命名？（地信版）
@@ -229,14 +236,18 @@ export default function HomePage() {
                   {abbr}
                 </span>
                 <Flex wrap="wrap" className="gap-8 flex-1">
-                  {fullNames.map((name: string, idx: number) => (
-                    <Typography.Paragraph
-                      copyable
-                      key={name + idx}
-                      style={{ marginBottom: 0, fontSize: 14 }}
-                    >
-                      {name}
-                    </Typography.Paragraph>
+                  {fullNames.map((nameData: FullNameData, idx: number) => (
+                    <Flex key={nameData._id} align="center" gap={4}>
+                      <Typography.Paragraph
+                        copyable
+                        onCopy={() => {
+                          handleCopy(nameData.full_name, nameData._id);
+                        }}
+                        style={{ marginBottom: 0, fontSize: 14 }}
+                      >
+                        {nameData.full_name}
+                      </Typography.Paragraph>
+                    </Flex>
                   ))}
                 </Flex>
                 <Button
@@ -369,7 +380,6 @@ export default function HomePage() {
                     style={{
                       fontSize: 18,
                       fontWeight: 700,
-                      color: "#222",
                       minWidth: 60,
                       cursor: "pointer",
                     }}

@@ -15,6 +15,23 @@ CREATE INDEX abbreviation_idx ON public.geo_abbreviations USING btree (abbreviat
 CREATE INDEX full_name_idx ON public.geo_abbreviations USING btree (full_name);
 CREATE INDEX copied_count_idx ON public.geo_abbreviations USING btree (copied_count DESC);
 
+-- RLS Policies
+-- Allow public read access
+CREATE POLICY "Enable read access for all users" ON public.geo_abbreviations
+  FOR SELECT USING (true);
+
+-- Allow public insert access
+CREATE POLICY "Enable insert for all users" ON public.geo_abbreviations
+  FOR INSERT WITH CHECK (true);
+
+-- Allow public update access (for copied_count and admin edits)
+CREATE POLICY "Enable update for all users" ON public.geo_abbreviations
+  FOR UPDATE USING (true);
+
+-- Allow public delete access (for admin panel)
+CREATE POLICY "Enable delete for all users" ON public.geo_abbreviations
+  FOR DELETE USING (true);
+
 CREATE OR REPLACE FUNCTION public.increment_copied_count(row_id uuid)
  RETURNS void
  LANGUAGE plpgsql
