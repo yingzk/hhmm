@@ -1,217 +1,204 @@
-import mongoose from "mongoose"
+import { createClient } from "@supabase/supabase-js";
 
-const MONGODB_URI = process.env.MONGODB_URI
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable in .env.local")
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error(
+    "Missing Supabase environment variables. Please define SUPABASE_URL and SUPABASE_KEY in .env.local"
+  );
 }
 
-// 全局缓存连接
-let cached = global.mongoose
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null }
-}
-
-async function connectDB() {
-  if (cached.conn) {
-    return cached.conn
-  }
-
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    }
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose
-    })
-  }
-
-  try {
-    cached.conn = await cached.promise
-  } catch (e) {
-    cached.promise = null
-    throw e
-  }
-
-  return cached.conn
-}
-
-// 定义数据模型
-const geoAbbreviationSchema = new mongoose.Schema(
-  {
-    abbreviation: {
-      type: String,
-      required: true,
-      uppercase: true,
-      trim: true,
-      index: true,
-    },
-    full_name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    copied_count: {
-      type: Number,
-      default: 0,
-      index: true,
-    },
-  },
-  {
-    timestamps: {
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
-  },
-)
-
-// 创建索引
-geoAbbreviationSchema.index({ abbreviation: "text", full_name: "text" })
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export interface GeoAbbreviation {
-  _id: string
-  abbreviation: string
-  full_name: string
-  created_at: Date
-  updated_at: Date
+  _id: string;
+  abbreviation: string;
+  full_name: string;
+  copied_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
-// 避免重复编译模型
-const GeoAbbreviationModel = mongoose.models.GeoAbbreviation || mongoose.model("GeoAbbreviation", geoAbbreviationSchema)
-
 export class GeoAbbreviationDB {
-  // 确保数据库连接
-  private static async ensureConnection() {
-    await connectDB()
-  }
-
-  // 初始化示例数据
-  static async initSampleData() {
-    await this.ensureConnection()
-
-    const count = await GeoAbbreviationModel.countDocuments()
-    if (count === 0) {
-      const sampleData = [
-        { abbreviation: "GSDJ", full_name: "公示地价" },
-        { abbreviation: "JZDJ", full_name: "基准地价" },
-        { abbreviation: "TDLY", full_name: "土地利用" },
-        { abbreviation: "GHGH", full_name: "规划规划" },
-        { abbreviation: "ZRZY", full_name: "自然资源" },
-        { abbreviation: "GTPO", full_name: "国土空间规划" },
-        { abbreviation: "TDQX", full_name: "土地权属" },
-        { abbreviation: "JBNT", full_name: "基本农田" },
-        { abbreviation: "STTD", full_name: "生态土地" },
-        { abbreviation: "CJYD", full_name: "城建用地" },
-      ]
-
-      await GeoAbbreviationModel.insertMany(sampleData)
-    }
-  }
+  private static readonly TABLE_NAME = "geo_abbreviations";
 
   // 根据简写搜索
-  static async search(abbreviation: string): Promise<GeoAbbreviation[]> {
-    await this.ensureConnection()
+  static async search(query: string): Promise<GeoAbbreviation[]> {
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .select("*")
+      .or(`abbreviation.ilike.%${query}%,full_name.ilike.%${query}%`)
+      .order("created_at", { ascending: false });
 
-    const results = await GeoAbbreviationModel.find({
-      $or: [
-        { abbreviation: { $regex: abbreviation.toUpperCase(), $options: "i" } },
-        { full_name: { $regex: abbreviation, $options: "i" } },
-      ],
-    })
-      .sort({ created_at: -1 })
-      .lean()
+    if (error) {
+      console.error("Error searching:", error);
+      return [];
+    }
 
-    return results.map((doc) => ({
-      ...doc,
-      _id: doc._id.toString(),
-    }))
+    return data.map((item) => ({
+      _id: item.id, // Supabase uses 'id' by default for primary key
+      abbreviation: item.abbreviation,
+      full_name: item.full_name,
+      copied_count: item.copied_count,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    }));
   }
 
   // 获取所有记录
   static async getAll(): Promise<GeoAbbreviation[]> {
-    await this.ensureConnection()
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    const results = await GeoAbbreviationModel.find({}).sort({ created_at: -1 }).lean()
+    if (error) {
+      console.error("Error getting all records:", error);
+      return [];
+    }
 
-    return results.map((doc) => ({
-      ...doc,
-      _id: doc._id.toString(),
-    }))
+    return data.map((item) => ({
+      _id: item.id,
+      abbreviation: item.abbreviation,
+      full_name: item.full_name,
+      copied_count: item.copied_count,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    }));
   }
 
   // 添加新记录
-  static async add(abbreviation: string, fullName: string): Promise<GeoAbbreviation> {
-    await this.ensureConnection()
+  static async add(
+    abbreviation: string,
+    fullName: string
+  ): Promise<GeoAbbreviation | null> {
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .insert({ abbreviation: abbreviation.toUpperCase(), full_name: fullName })
+      .select();
 
-    const newDoc = new GeoAbbreviationModel({
-      abbreviation: abbreviation.toUpperCase(),
-      full_name: fullName,
-    })
-
-    const saved = await newDoc.save()
-    return {
-      ...saved.toObject(),
-      _id: saved._id.toString(),
+    if (error) {
+      console.error("Error adding record:", error);
+      return null;
     }
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    const newItem = data[0];
+    return {
+      _id: newItem.id,
+      abbreviation: newItem.abbreviation,
+      full_name: newItem.full_name,
+      copied_count: newItem.copied_count,
+      created_at: newItem.created_at,
+      updated_at: newItem.updated_at,
+    };
   }
 
   // 更新记录
-  static async update(id: string, abbreviation: string, fullName: string): Promise<GeoAbbreviation | null> {
-    await this.ensureConnection()
-
-    const updated = await GeoAbbreviationModel.findByIdAndUpdate(
-      id,
-      {
+  static async update(
+    id: string,
+    abbreviation: string,
+    fullName: string
+  ): Promise<GeoAbbreviation | null> {
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .update({
         abbreviation: abbreviation.toUpperCase(),
         full_name: fullName,
-        updated_at: new Date(),
-      },
-      { new: true },
-    ).lean()
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select();
 
-    if (!updated) return null
-
-    return {
-      ...updated,
-      _id: updated._id.toString(),
+    if (error) {
+      console.error("Error updating record:", error);
+      return null;
     }
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    const updatedItem = data[0];
+    return {
+      _id: updatedItem.id,
+      abbreviation: updatedItem.abbreviation,
+      full_name: updatedItem.full_name,
+      copied_count: updatedItem.copied_count,
+      created_at: updatedItem.created_at,
+      updated_at: updatedItem.updated_at,
+    };
   }
 
   // 删除记录
   static async delete(id: string): Promise<boolean> {
-    await this.ensureConnection()
+    const { error } = await supabase
+      .from(this.TABLE_NAME)
+      .delete()
+      .eq("id", id);
 
-    const result = await GeoAbbreviationModel.findByIdAndDelete(id)
-    return !!result
+    if (error) {
+      console.error("Error deleting record:", error);
+      return false;
+    }
+    return true;
   }
 
   // 根据ID获取记录
   static async getById(id: string): Promise<GeoAbbreviation | null> {
-    await this.ensureConnection()
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    const doc = await GeoAbbreviationModel.findById(id).lean()
-    if (!doc) return null
+    if (error) {
+      console.error("Error getting record by ID:", error);
+      return null;
+    }
 
     return {
-      ...doc,
-      _id: doc._id.toString(),
-    }
+      _id: data.id,
+      abbreviation: data.abbreviation,
+      full_name: data.full_name,
+      copied_count: data.copied_count,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
   }
 
   // 获取复制量最高的N条
   static async getMostCopied(limit: number): Promise<GeoAbbreviation[]> {
-    await this.ensureConnection();
-    const results = await GeoAbbreviationModel.find({})
-      .sort({ copied_count: -1, created_at: -1 })
-      .limit(limit)
-      .lean();
-    return results.map((doc) => ({
-      ...doc,
-      _id: doc._id.toString(),
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .select("*")
+      .order("copied_count", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Error getting most copied records:", error);
+      return [];
+    }
+
+    return data.map((item) => ({
+      _id: item.id,
+      abbreviation: item.abbreviation,
+      full_name: item.full_name,
+      copied_count: item.copied_count,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
     }));
   }
-}
 
-export default connectDB
+  static async incrementCopiedCount(id: string): Promise<void> {
+    const { error } = await supabase.rpc("increment_copied_count", {
+      row_id: id,
+    });
+    if (error) {
+      console.error("Error incrementing copied count:", error);
+    }
+  }
+}

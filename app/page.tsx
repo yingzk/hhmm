@@ -26,6 +26,23 @@ export default function HomePage() {
   const [hotList, setHotList] = useState<GeoAbbreviation[]>([]);
   const [notFoundKeywords, setNotFoundKeywords] = useState<string[]>([]);
 
+  // 获取热门词数据
+  const fetchHotList = async () => {
+    try {
+      const response = await fetch("/api/abbreviations?type=hot"); // 添加 type 参数以区分请求类型
+      const data = await response.json();
+      if (data.success) {
+        setHotList(data.data);
+        console.log("Fetched hotList data:", data.data);
+      } else {
+        message.error(data.error || "未知错误");
+      }
+    } catch (error) {
+      message.error("网络错误，无法获取热门词");
+      console.error("Error fetching hot list:", error);
+    }
+  };
+
   // 合并相同 abbreviation 的释义
   const merged = Array.from(
     searchResults.reduce((acc, cur) => {
@@ -38,10 +55,16 @@ export default function HomePage() {
   );
 
   // 复制内容并提示
-  const handleCopy = (text: string) => {
+  const handleCopy = (text: string, id: string) => {
     clipboardCopy(text)
-      .then(() => {
+      .then(async () => {
         message.success({ content: `已复制: ${text}` });
+        // 增加复制次数
+        await fetch(`/api/abbreviations/increment-copy?id=${id}`, {
+          method: "PUT",
+        });
+        // 重新获取热门词，更新显示
+        fetchHotList();
       })
       .catch(() => {
         message.error("复制失败，请检查浏览器权限或环境");
@@ -127,14 +150,7 @@ export default function HomePage() {
 
   // 首次加载获取热门词
   useEffect(() => {
-    fetch("/api/abbreviations")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setHotList(data.data);
-          console.log("Fetched hotList data:", data.data);
-        }
-      });
+    fetchHotList(); // 调用新的 fetchHotList 函数
   }, []);
 
   console.log("Current searchQuery:", searchQuery);
