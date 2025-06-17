@@ -117,6 +117,7 @@ export default function HomePage() {
       debouncedSearch(searchQuery);
     } else {
       setSearchResults([]);
+      setNotFoundKeywords([]);
     }
     return () => {
       debouncedSearch.cancel(); // 清理防抖函数
@@ -250,7 +251,6 @@ export default function HomePage() {
               boxShadow: "0 4px 24px #a5b4fc55",
               padding: 16,
               marginBottom: 12,
-              borderRadius: 8,
             }}
           >
             {notFoundKeywords.map((keyword) => (
