@@ -98,7 +98,15 @@ export default function HomePage() {
       const data = await response.json();
       if (data.success) {
         setSearchResults(data.foundResults || []);
-        setNotFoundKeywords(data.notFoundKeywords || []);
+        const foundExactMatch = (data.foundResults || []).some(
+          (result: GeoAbbreviation) =>
+            result.abbreviation.toLowerCase() === query.toLowerCase()
+        );
+        if (!foundExactMatch && query.trim() !== '') {
+          setNotFoundKeywords([query]);
+        } else {
+          setNotFoundKeywords(data.notFoundKeywords || []);
+        }
       } else {
         message.error(data.error || "未知错误");
       }
@@ -230,7 +238,7 @@ export default function HomePage() {
                   style={{
                     fontSize: 18,
                     fontWeight: 700,
-                    color: "#222",
+                    color: abbr.toLowerCase() === searchQuery.toLowerCase() ? "red" : "#222",
                     minWidth: 60,
                     cursor: "pointer",
                   }}
@@ -293,7 +301,7 @@ export default function HomePage() {
                   style={{
                     fontSize: 18,
                     fontWeight: 700,
-                    color: "#222",
+                    color: keyword.toLowerCase() === searchQuery.toLowerCase() ? "red" : "#222",
                     minWidth: 60,
                     cursor: "pointer",
                   }}
