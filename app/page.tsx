@@ -269,11 +269,8 @@ export default function HomePage() {
                     minWidth: 60,
                     cursor: "pointer",
                   }}
-                  title="点击复制"
-                  onClick={() => handleCopy(keyword)}
                 >
-                  {keyword}{" "}
-                  <CopyOutlined style={{ fontSize: 14, marginLeft: 4 }} />
+                  {keyword}
                 </span>
                 <span style={{ color: "#888", fontSize: 14 }}>未找到</span>
                 <Button
