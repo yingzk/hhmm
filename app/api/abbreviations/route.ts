@@ -15,23 +15,23 @@ export async function GET(request: NextRequest) {
         .filter(Boolean);
       let foundResults: GeoAbbreviation[] = [];
       const notFoundKeywords: string[] = [];
-      const uniqueFoundAbbreviations = new Set<string>();
 
       for (const kw of keywords) {
         const part = await GeoAbbreviationDB.search(kw);
         if (part.length > 0) {
-          part.forEach((item) => {
-            if (!uniqueFoundAbbreviations.has(item.abbreviation)) {
-              foundResults.push(item);
-              uniqueFoundAbbreviations.add(item.abbreviation);
-            }
-          });
+          foundResults.push(...part); // Push all found parts
         } else {
           notFoundKeywords.push(kw);
         }
       }
-      // 限制结果数量
-      foundResults = foundResults.slice(0, 10);
+
+      // Deduplicate the foundResults by _id to avoid sending duplicate GeoAbbreviation objects
+      const uniqueById = new Map<string, GeoAbbreviation>();
+      foundResults.forEach(item => {
+        uniqueById.set(item._id, item);
+      });
+      foundResults = Array.from(uniqueById.values());
+
       return NextResponse.json({
         success: true,
         foundResults,

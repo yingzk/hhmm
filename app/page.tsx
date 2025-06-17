@@ -82,7 +82,7 @@ export default function HomePage() {
   // 防抖后的查询方法
   const debouncedSearch = debounce((query: string) => {
     handleSearch(query);
-  }, 300);
+  }, 500);
 
   // 修改 handleSearch 支持参数
   const handleSearch = async (query: string) => {
@@ -173,7 +173,9 @@ export default function HomePage() {
             textAlign: "center",
             marginBottom: 32,
             color: "#312e81",
+            cursor: "pointer",
           }}
+          onClick={() => setSearchQuery("")}
         >
           😅能不能好好命名？（地信版）
         </Typography.Title>
@@ -237,17 +239,16 @@ export default function HomePage() {
                 </span>
                 <Flex wrap="wrap" className="gap-8 flex-1">
                   {fullNames.map((nameData: FullNameData, idx: number) => (
-                    <Flex key={nameData._id} align="center" gap={4}>
-                      <Typography.Paragraph
-                        copyable
-                        onCopy={() => {
-                          handleCopy(nameData.full_name, nameData._id);
-                        }}
-                        style={{ marginBottom: 0, fontSize: 14 }}
-                      >
-                        {nameData.full_name}
-                      </Typography.Paragraph>
-                    </Flex>
+                    <Typography.Paragraph
+                      key={nameData._id}
+                      copyable
+                      onCopy={() => {
+                        handleCopy(nameData.full_name, nameData._id);
+                      }}
+                      style={{ marginBottom: 0, fontSize: 14, marginRight: '8px' }}
+                    >
+                      {nameData.full_name}
+                    </Typography.Paragraph>
                   ))}
                 </Flex>
                 <Button
